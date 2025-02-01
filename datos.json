@@ -1,0 +1,15 @@
+{
+	"notas": [
+		"Solo es necesario pegar la ruta_ficha de cada ficha desde el dominio, las barras antes y después no importan, pero el resto debe ser exacto.",
+		"Cuidado con la sintaxis: las comas son necesarias después de cada línea EXCEPTO la última de cada sección.",
+		"Ejemplo: 'ruta_ficha' y 'capitulos' necesitan coma, pero 'url_completa' no. La última ficha no necesita coma después del }"
+	],
+	"dominio_base": "https://ikigaimangas.com/",
+	"fichas": [
+		{
+			"ruta_ficha": "/series/punto-de-vista-del-lector-omnisciente/",
+			"capitulos": "",
+			"url_completa": ""
+		}
+	]
+}
