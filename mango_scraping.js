@@ -117,7 +117,7 @@ async function main() {
 			console.log(`Capítulos: ${ficha.capitulos}`);
 
 			// Esperar entre solicitudes (en milisegundos
-			await new Promise(resolve => setTimeout(resolve, 10000));
+			await new Promise(resolve => setTimeout(resolve, 20000));
 		}
 
 		// Guardar datos actualizados
@@ -149,7 +149,7 @@ main().catch(error => {
 //
 // on:
 //   schedule:
-//     - cron: '0 */12 * * *'
+//     - cron: '0 0 * * *'
 //   workflow_dispatch:
 //
 // jobs:
