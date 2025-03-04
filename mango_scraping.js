@@ -62,33 +62,27 @@ async function obtenerNuevoDominio(browser, dominioBase) {
 }
 
 async function obtenerCapitulos(page, urlCompleta) {
-	try {
-		// Ir a la URL completa y esperar a que se cargue completamente
-		await page.goto(urlCompleta, { waitUntil: 'networkidle0' });
+	// Ir a la URL completa y esperar que se cargue completamente
+	await page.goto(urlCompleta, { waitUntil: 'networkidle0' });
 
-		// Esperar y obtener el número de capítulos
-		const capitulosSelector = 'h2.font-semibold.text-2xl';
-		await page.waitForSelector(capitulosSelector, { timeout: 10000 }); // Se espera hasta 10 segundos
+	// Esperar y obtener el número de capítulos
+	const capitulosSelector = 'h2.font-semibold.text-2xl';
+	await page.waitForSelector(capitulosSelector, { timeout: 10000 }); // Se espera hasta 10 segundos
 
-		// Intentar obtener los capítulos desde la página
-		const capitulos = await page.evaluate((selector) => {
-			const elemento = document.querySelector(selector);
-			if (!elemento) {
-				console.warn('Numero de capítulo no encontrado');
-				return '';
-			}
-			// Extraer y procesar el contenido del texto
-			const texto = elemento.textContent;
-			const match = texto.match(/(\d+)/);
-			return match ? match[1] : '';
-		}, capitulosSelector);
+	// Intentar obtener los capítulos desde la página
+	const capitulos = await page.evaluate((selector) => {
+		const elemento = document.querySelector(selector);
+		if (!elemento) {
+			console.warn('Elemento no encontrado');
+			return '';
+		}
+		// Extraer y procesar el contenido del texto
+		const texto = elemento.textContent;
+		const match = texto.match(/(\d+)/);
+		return match ? match[1] : '';
+	}, capitulosSelector);
 
-		return capitulos;
-	} catch (error) {
-		// Si ocurre un error al obtener los capítulos, lo registramos
-		console.error(`Error al obtener capítulos para ${urlCompleta}:`, error);
-		return '';  // Devolver una cadena vacía en caso de error
-	}
+	return capitulos;
 }
 
 async function main() {
@@ -104,7 +98,7 @@ async function main() {
 		});
 
 		// Obtener nuevo dominio
-		const { nuevoDominio, newPage } = await obtenerNuevoDominio(browser, datos.dominio_base);
+		const { nuevoDominio } = await obtenerNuevoDominio(browser, datos.dominio_base);
 
 		// Procesar cada ficha
 		for (const ficha of datos.fichas) {
@@ -115,23 +109,32 @@ async function main() {
 			const dominioLimpio = nuevoDominio.replace(/\/+$/, '');
 			// Asegurar que la ruta_ficha tenga el formato correcto
 			const rutaFichaLimpia = ficha.ruta_ficha.startsWith('/') ? ficha.ruta_ficha : '/' + ficha.ruta_ficha;
-			ficha.url_completa = dominioLimpio + rutaFichaLimpia;
+			const urlCompleta = dominioLimpio + rutaFichaLimpia;
+			ficha.url_completa = urlCompleta;
 
 			// Abrir una nueva pestaña para cada ficha
 			const paginaFicha = await browser.newPage();
-			ficha.capitulos = await obtenerCapitulos(paginaFicha, ficha.url_completa);
-
-			console.log(`URL completa: ${ficha.url_completa}`);
-			console.log(`Capítulos: ${ficha.capitulos}`);
-
-			// Cerrar la pestaña de la ficha después de procesarla
-			await paginaFicha.close();
+			try {
+				// Intentar obtener los capítulos; si falla, no actualizar ficha.capitulos
+				const capitulos = await obtenerCapitulos(paginaFicha, urlCompleta);
+				console.log(`URL completa: ${urlCompleta}`);
+				console.log(`Capítulos: ${capitulos}`);
+				ficha.capitulos = capitulos;
+			} catch (error) {
+				// Si ocurre un error (por ejemplo, timeout), se registra y se mantiene el valor anterior de ficha.capitulos
+				console.error(`Error al obtener capítulos para ${urlCompleta}:`, error);
+				console.log(`URL completa: ${urlCompleta}`);
+				console.log(`Capítulos: ${ficha.capitulos} (sin actualizar)`);
+			} finally {
+				// Cerrar la pestaña de la ficha después de procesarla
+				await paginaFicha.close();
+			}
 
 			// Esperar entre solicitudes (en milisegundos)
 			await new Promise(resolve => setTimeout(resolve, 20000));
 		}
 
-		// Guardar datos actualizados
+		// Guardar los datos actualizados
 		guardarDatos(datos);
 
 	} catch (error) {
