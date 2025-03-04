@@ -63,24 +63,31 @@ async function obtenerNuevoDominio(browser, dominioBase) {
 
 async function obtenerCapitulos(page, urlCompleta) {
 	try {
+		// Ir a la URL completa y esperar a que se cargue completamente
 		await page.goto(urlCompleta, { waitUntil: 'networkidle0' });
 
 		// Esperar y obtener el número de capítulos
 		const capitulosSelector = 'h2.font-semibold.text-2xl';
-		await page.waitForSelector(capitulosSelector);
+		await page.waitForSelector(capitulosSelector, { timeout: 10000 }); // Se espera hasta 10 segundos
 
-		const capitulos = await page.evaluate(() => {
-			const elemento = document.querySelector('h2.font-semibold.text-2xl');
-			if (!elemento) return '';
+		// Intentar obtener los capítulos desde la página
+		const capitulos = await page.evaluate((selector) => {
+			const elemento = document.querySelector(selector);
+			if (!elemento) {
+				console.warn('Numero de capítulo no encontrado');
+				return '';
+			}
+			// Extraer y procesar el contenido del texto
 			const texto = elemento.textContent;
 			const match = texto.match(/(\d+)/);
 			return match ? match[1] : '';
-		});
+		}, capitulosSelector);
 
 		return capitulos;
 	} catch (error) {
+		// Si ocurre un error al obtener los capítulos, lo registramos
 		console.error(`Error al obtener capítulos para ${urlCompleta}:`, error);
-		return '';
+		return '';  // Devolver una cadena vacía en caso de error
 	}
 }
 
@@ -110,13 +117,17 @@ async function main() {
 			const rutaFichaLimpia = ficha.ruta_ficha.startsWith('/') ? ficha.ruta_ficha : '/' + ficha.ruta_ficha;
 			ficha.url_completa = dominioLimpio + rutaFichaLimpia;
 
-			// Obtener capítulos
-			ficha.capitulos = await obtenerCapitulos(newPage, ficha.url_completa);
+			// Abrir una nueva pestaña para cada ficha
+			const paginaFicha = await browser.newPage();
+			ficha.capitulos = await obtenerCapitulos(paginaFicha, ficha.url_completa);
 
 			console.log(`URL completa: ${ficha.url_completa}`);
 			console.log(`Capítulos: ${ficha.capitulos}`);
 
-			// Esperar entre solicitudes (en milisegundos
+			// Cerrar la pestaña de la ficha después de procesarla
+			await paginaFicha.close();
+
+			// Esperar entre solicitudes (en milisegundos)
 			await new Promise(resolve => setTimeout(resolve, 20000));
 		}
 
@@ -138,8 +149,6 @@ main().catch(error => {
 	console.error('Error fatal en la aplicación:', error);
 	process.exit(1);
 });
-
-
 
 
 // Copia del workflow de gitub
